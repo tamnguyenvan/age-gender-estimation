@@ -1,4 +1,4 @@
 keras
-tensorflow-gpu==1.14
+tensorflow-gpu==1.15.0
 matplotlib
 pillow
