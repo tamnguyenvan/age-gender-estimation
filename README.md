@@ -1,22 +1,16 @@
-# Age Gender Estimation
-Keras implementation for age and gender estimation. We use [the IMDB and Wiki dataset](https://data.vision.ee.ethz.ch/cvl/rrothe/imdb-wiki/)
-for training on.
+# Age and Gender estimation
+Age and gender estimation using CNN. We train the model on [the IMDB and Wiki dataset](https://data.vision.ee.ethz.ch/cvl/rrothe/imdb-wiki/). We tried variety of deep network architectures like ResNet, DenseNet, Inception-ResNet-v3 to find out which one is the best. Eventually, we decide to pick ResNet as our model.
 
 # Dependencies
-- `Keras==3.1.1`
-- `tensorflow-gpu==1.14.0`
-- `dlib` (for demo)
-- `opencv`
+- tensorflow >=1.15
+- dlib (for face detection)
+- opencv-python (for camera demo)
 
-# Usage
-## Download
-First, download dataset and put to your own directory.
+# Train the model
+At first, download face-only datasets, extract and put them anywhere you'd like. Afterthat, run training script `python train.py`. Show help for more options.
 
-## Training
-Next, edit `train.py` file to fit your demand then run training: `python train.py`
+# Test the model
+We also provided a pretrained model to help you instantly test it. If you'd like to test on a single image, run `python test_on_image.py --model_path MODEL_PATH --image_path IMAGE_PATH`. Otherwise, in case you'd like to test on realtime camera, run `python test_on_camera.py --model_path MODEL_PATH --image_path IMAGE_PATH`. Enjoy!
 
-## Test
-You can run `python eval.py` for testing phase. We test the model on `appa-real` dataset.
-
-## Run on camera
-We provide the script to help you run the model on realtime camera (opencv required).
+# Contact
+Any question could be left as issues. Contact me via email tamvannguyen200795@gmail.com. You're all welcome.
