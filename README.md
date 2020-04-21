@@ -1,16 +1,37 @@
 # Age and Gender estimation
-Age and gender estimation using CNN. We train the model on [the IMDB and Wiki dataset](https://data.vision.ee.ethz.ch/cvl/rrothe/imdb-wiki/). We tried variety of deep network architectures like ResNet, DenseNet, Inception-ResNet-v3 to find out which one is the best. Eventually, we decide to pick ResNet as our model.
+Age and gender estimation using CNN. The model was trained on [the IMDB and Wiki dataset](https://data.vision.ee.ethz.ch/cvl/rrothe/imdb-wiki/). The APPA-real-realease dataset was used for test phase. 
 
-# Dependencies
-- tensorflow >=1.15
-- dlib (for face detection)
-- opencv-python (for camera demo)
+# Requirements
+- `Tensorflow >= 2.0`
+- `mtcnn`
+- `opencv`
+
+See `requirements.txt` for full requirements. All packages can be installed by `pip` easily.
 
 # Train the model
-At first, download face-only datasets, extract and put them anywhere you'd like. Afterthat, run training script `python train.py`. Show help for more options.
+At first, download face-only datasets from the dataset home page, extract and put them anywhere you'd like. The project structure should be as follows:
+```
+-- age-gender-estimation
+ |
+ |-- data
+ |    |
+ |    |-- imdb_crop
+ |    |-- wiki_crop
+ |    |-- appa-real-release
+ |
+ |-- train.py
+ |-- README.md
+ ...
+```
+Train the model with the following command.
+```python
+python train.py --batch_size 128 --epochs 100 --lr 1e-3 --data_dir data --save_dir saved_models
+```
+When the training process finished, a file named `history.npy` should be saved to folder `saved_models` as default. Run `python plot_curve.py --input_path saved_models/history.npy` for visualization.
+![learning curve](result.png)
 
 # Test the model
-We also provided a pretrained model to help you instantly test it. If you'd like to test on a single image, run `python test_on_image.py --model_path MODEL_PATH --image_path IMAGE_PATH`. Otherwise, in case you'd like to test on realtime camera, run `python test_on_camera.py --model_path MODEL_PATH --image_path IMAGE_PATH`. Enjoy!
+We also provided a pretrained model to help you instantly test it. If you'd like to test on a single image, run `python test_on_image.py --model_path MODEL_PATH --image_path IMAGE_PATH`. Otherwise, in case you'd like to test on realtime camera, run `python test_on_camera.py --model_path MODEL_PATH --image_path IMAGE_PATH`.
 
 # Contact
 Any question could be left as issues. Contact me via email tamvannguyen200795@gmail.com. You're all welcome.

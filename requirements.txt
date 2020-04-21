@@ -1,0 +1,5 @@
+tensorflow-gpu==2.0
+mtcnn
+opencv-python
+scipy
+matplotlib

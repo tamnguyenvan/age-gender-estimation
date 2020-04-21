@@ -42,15 +42,17 @@ def main(args):
     detector = dlib.get_frontal_face_detector()
     cap = cv2.VideoCapture(0)
     margin = 0.4
-    input_dim = (112, 112)
+    input_dim = (224, 224)
+    classes = np.arange(0, 101).reshape(101, 1)
 
     while True:
         ret, image = cap.read()
         if not ret:
             continue
 
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        dets = detector(image, 1)
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        dets = detector(gray, 1)
         faces = []
         bboxes = []
         for d in dets:
@@ -59,24 +61,26 @@ def main(args):
             yw1 = int(y1 - margin * h)
             xw2 = int(x2 + margin * w)
             yw2 = int(y2 + margin * h)
-            cropped_img = imcrop(image, xw1, yw1, xw2, yw2)
+            cropped_img = imcrop(rgb_image, xw1, yw1, xw2, yw2)
             face = cv2.resize(cropped_img, (input_dim))
             faces.append(face)
             bboxes.append((x1, y1, x2, y2))
 
+        image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
         if faces:
             faces = np.asarray(faces, dtype='float32') / 255.
             pred = model.predict(faces)
-            ages_out = np.arange(0, 101).reshape(101, 1)
-            pred_ages = list(pred[0].dot(ages_out).flatten().astype('uint8'))
-            pred_genders = np.argmax(pred[1], axis=1)
+            pred_ages = list(pred[0].dot(classes).flatten().astype('uint8'))
+            pred_genders = np.where(pred[1] > 0.5, 1, 0)
 
             for bbox, age, gender in zip(bboxes, pred_ages, pred_genders):
-                cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 0, 255), 2)
-                text = 'Age: {} Gender: {}'.format(age, 'male' if gender else 'female')
-                cv2.putText(image, text, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
+                x1, y1, x2, y2 = bbox
+                cv2.rectangle(image, (x1, y1), (x2, y2), (255, 153, 0), 2)
+                text = '{}, {}'.format(age, 'M' if gender else 'F')
+                cv2.putText(image, text, (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                            (255, 153, 0), 1, cv2.LINE_AA)
 
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         cv2.imshow('test', image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

@@ -3,14 +3,14 @@
 import argparse
 from sys import argv
 import cv2
-import dlib
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
+from mtcnn import MTCNN
 
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.75
-tf.Session(config=config)
+tf.compat.v1.Session(config=config)
 
 
 def parse_args(argv):
@@ -40,43 +40,68 @@ def pad_img_to_fit_bbox(img, x1, x2, y1, y2):
     return img, x1, x2, y1, y2
 
 
+def expand2square(pil_img, background_color=(255, 255, 255)):
+    width, height = pil_img.size
+    if width == height:
+        return pil_img
+    elif width > height:
+        result = Image.new(pil_img.mode, (width, width), background_color)
+        result.paste(pil_img, (0, (width - height) // 2))
+        return result
+    else:
+        result = Image.new(pil_img.mode, (height, height), background_color)
+        result.paste(pil_img, ((height - width) // 2, 0))
+        return result
+
 
 def main(args):
     model = load_model(args.model_path)
-    detector = dlib.get_frontal_face_detector()
-    input_dim = (112, 112)
+    detector = MTCNN()
+    input_dim = (224, 224)
 
     margin = args.margin
     image_path = args.image_path
     image = cv2.imread(image_path)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    dets = detector(image, 1)
+
+    dets = detector.detect_faces(image)
     faces = []
     bboxes = []
+    classes = np.arange(0, 101).reshape(101, 1)
     for d in dets:
-        x1, y1, x2, y2, w, h = d.left(), d.top(), d.right() + 1, d.bottom() + 1, d.width(), d.height()
+        box = d['box']
+        # x1, y1, x2, y2, w, h = d.left(), d.top(), d.right() + 1, d.bottom() + 1, d.width(), d.height()
+        x1, y1, x2, y2, w, h = box[0], box[1], box[0] + box[2], box[1] + box[3], box[2], box[3]
         xw1 = int(x1 - margin * w)
         yw1 = int(y1 - margin * h)
         xw2 = int(x2 + margin * w)
         yw2 = int(y2 + margin * h)
-        cropped_img = imcrop(image, xw1, yw1, xw2, yw2)
-        face = cv2.resize(cropped_img, (input_dim))
+        new_w, new_h = yw2 - yw1, xw2 - xw1
+        new_size = max(new_w, new_h)
+        pad_w = new_size - new_w
+        pad_h = new_size - new_h
+        cropped_img = imcrop(image, xw1 - pad_w // 2,
+                             yw1 - pad_h // 2,
+                             xw1 + new_size, yw1 + new_size)
+        face = cv2.resize(cropped_img, input_dim)
         faces.append(face)
         bboxes.append((x1, y1, x2, y2))
 
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     if faces:
         faces = np.asarray(faces, dtype='float32') / 255.
         pred = model.predict(faces)
-        ages_out = np.arange(0, 101).reshape(101, 1)
-        pred_ages = list(pred[0].dot(ages_out).flatten().astype('uint8'))
-        pred_genders = np.argmax(pred[1], axis=1)
+        pred_ages = list(pred[0].dot(classes).flatten().astype('uint8'))
+        pred_genders = np.where(pred[1] > 0.5, 1, 0)
 
         for bbox, age, gender in zip(bboxes, pred_ages, pred_genders):
-            cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 1)
-            text = 'Age: {} Gender: {}'.format(age, 'male' if gender else 'female')
-            cv2.putText(image, text, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
+            x1, y1, x2, y2 = bbox
+            cv2.rectangle(image, (x1, y1), (x2, y2), (255, 153, 0), 2)
+            text = '{}, {}'.format(age, 'M' if gender else 'F')
+            cv2.putText(image, text, (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                        (255, 153, 0), 1, cv2.LINE_AA)
 
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     cv2.imshow('test', image)
     cv2.waitKey(0)
     out_path = image_path.split('.')[0] + '_out.jpg'
