@@ -2,7 +2,7 @@
 Age and gender estimation using CNN. The model was trained on [the IMDB and Wiki dataset](https://data.vision.ee.ethz.ch/cvl/rrothe/imdb-wiki/). The APPA-real-realease dataset was used for test phase. 
 
 # Requirements
-- `Tensorflow >= 2.0`
+- `Tensorflow >= 2.0.1
 - `mtcnn`
 - `opencv`
 
