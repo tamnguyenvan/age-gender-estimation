@@ -1,4 +1,4 @@
-"""This module consists of resnet version 2 implementation."""
+"""This module consists of seresnet version 2 implementation."""
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras import layers
@@ -30,6 +30,17 @@ def conv2d_fixed_padding(inputs, filters, kernel_size,
                          use_bias=False, data_format=data_format)(inputs)
 
 
+def seblock(inputs, channels, ratio=16, data_format=None):
+    """Squeeze-and-Excitation block."""
+    x = layers.GlobalAveragePooling2D(data_format=data_format)(inputs)
+    x = layers.Dense(channels // ratio,
+                     activation='relu',
+                     kernel_initializer='he_normal')(x)
+    x = layers.Dense(channels, activation='sigmoid')(x)
+    x = layers.multiply([inputs, x])
+    return x
+
+
 def block_v2(inputs, filters, kernel_size,
              strides, projection_shortcut,
              data_format=None):
@@ -59,6 +70,9 @@ def block_v2(inputs, filters, kernel_size,
     inputs = layers.Activation('relu')(inputs)
     inputs = conv2d_fixed_padding(inputs, filters, kernel_size=3,
                                   strides=1, data_format=data_format)
+
+    # Apply seblock here
+    inputs = seblock(inputs, filters, 16, data_format)
     return inputs + shortcut
 
 
@@ -96,6 +110,8 @@ def bottleneck_v2(inputs, filters, strides,
     inputs = layers.Activation('relu')(inputs)
     inputs = conv2d_fixed_padding(inputs, filters * 4, kernel_size=1,
                                   strides=1, data_format=data_format)
+    # Apply seblock here
+    inputs = seblock(inputs, filters * 4, 16, data_format)
     return inputs + shortcut
 
 
@@ -128,11 +144,11 @@ def block_layer(inputs, filters, bottleneck, block_fn, blocks, strides,
     return inputs
 
 
-def resnet_model(input_shape, num_classes, bottleneck, num_filters,
-                 first_kernel_size, first_conv_strides,
-                 first_pool_size, first_pool_strides,
-                 blocks, block_strides, include_top=True,
-                 data_format=None):
+def senet_model(input_shape, num_classes, bottleneck, num_filters,
+                first_kernel_size, first_conv_strides,
+                first_pool_size, first_pool_strides,
+                blocks, block_strides, include_top=True,
+                data_format=None):
     """Build a keras model with custom params."""
     if bottleneck:
         block_fn = bottleneck_v2
@@ -147,6 +163,7 @@ def resnet_model(input_shape, num_classes, bottleneck, num_filters,
     if first_pool_size:
         x = layers.MaxPooling2D(pool_size=first_pool_size,
                                 strides=first_pool_strides,
+                                padding='same',
                                 data_format=data_format)(x)
 
     for i, num_blocks in enumerate(blocks):
@@ -169,19 +186,20 @@ def resnet_model(input_shape, num_classes, bottleneck, num_filters,
     return model
 
 
-def resnet18_v2(input_shape, num_classes=None,
+def senet18_v2(input_shape, num_classes=None,
                 include_top=True, data_format=None):
-    return resnet_model(
+    return senet_model(
         input_shape=input_shape,
         num_filters=16,
         bottleneck=True,
         num_classes=num_classes,
-        first_kernel_size=3,
+        first_kernel_size=7,
         first_conv_strides=2,
-        first_pool_size=None,
-        first_pool_strides=None,
+        first_pool_size=3,
+        first_pool_strides=2,
         blocks=[2, 2, 2, 2],
         block_strides=[1, 2, 2, 2],
         include_top=include_top,
         data_format=None
     )
+
